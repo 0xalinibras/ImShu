@@ -10,7 +10,7 @@ fs.mkdirSync(path.join(process.cwd(), "data"), { recursive: true });
 
 export const db = new Database(dbPath);
 
-db.exec(`
+db.run(`
 CREATE TABLE IF NOT EXISTS temps (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -22,3 +22,11 @@ CREATE TABLE IF NOT EXISTS temps (
     status TEXT NOT NULL
 );
 `);
+
+db.run(`
+CREATE TABLE IF NOT EXISTS temp_encrypted (
+    token TEXT PRIMARY KEY,
+    type TEXT NOT NULL,
+    data TEXT NOT NULL
+);
+`)

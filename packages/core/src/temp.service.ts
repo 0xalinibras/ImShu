@@ -1,20 +1,40 @@
+import { EncryptionService } from "./encryption.service";
 import { tempEvents } from "./events";
-import { saveFile, deleteFile, exists, Repository } from "./storage";
+import { generateSmartName } from "./naming";
+import { saveFile, deleteFile, exists, Repository, EncryptionRepository } from "./storage";
 import { moveFile } from "./storage/fileSystem";
 import { TempFile } from "./types";
 import path from "path";
 
 export class TempService {
-    constructor(private tempRepository: Repository) {}
+    constructor(
+        private tempRepository: Repository,
+        private encryptionRepo: EncryptionRepository,
+        private encryptionService: EncryptionService
+    ) {}
 
-    create(name: TempFile["name"], ext: TempFile["ext"], dirPath: TempFile["dirPath"], expiresIn: number, tags?: TempFile["tags"], content?: string) {
+    create(name: TempFile["name"], ext: TempFile["ext"], dirPath: TempFile["dirPath"], expiresIn: number, tags?: TempFile["tags"], content?: string, appsContext?: string) {
         try {
             const id = crypto.randomUUID();
-            name = `${name}_${Date.now()}`; //TODO: send *name* to generateName()
             const createdAt: TempFile["createdAt"] = Date.now();
             const expiresAt: TempFile["expiresAt"] = createdAt + expiresIn;
             if (!content) content = "";
             const status: TempFile["status"] = "temp";
+
+            //TODO: MAKE NAME STRTEGY
+            if(appsContext) {
+                const appsEnc = this.encryptionService.enctypt(appsContext);
+                const metaEnc = this.encryptionService.enctypt(
+                    JSON.stringify({id, name, ext, dirPath, createdAt, expiresAt, tags: tags || [], status})
+                )
+
+                this.encryptionRepo.save(appsEnc.token, "context", appsEnc.encrypted)
+                this.encryptionRepo.save(metaEnc.token, "metadata", metaEnc.encrypted)
+
+                name = generateSmartName(name, appsEnc.token, metaEnc.token);
+            } else {
+                name = `${name}_${Date.now()}`;
+            }
 
             const filePath = path.join(dirPath, `${name}.${ext}`);
             saveFile(filePath, content);

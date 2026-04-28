@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import { TempService, storage, TempScheduler } from "@imshu/core";
-import { exec, spawn } from "child_process";
+import { exec, execSync, spawn } from "child_process";
 import { tempEvents } from "../../packages/core/src/events";
 import readline from "readline";
 
@@ -30,6 +30,7 @@ const config = {
         py: "cmd",
     },
     defultSavedDirPath: "savedFiles",
+    useSmartNameEncryption: false,
 }
 
 
@@ -65,7 +66,33 @@ program
         expiresIn = Number(expiresIn ?? config.defultExpiresIn);
         tags = tags ? tags.split(",") : [];
 
-        const filePath = tempService.create(name, ext, dirPath, expiresIn, tags, content);
+        if(config.useSmartNameEncryption) {
+            const appsContext  = [...new Set(
+                (execSync("tasklist")
+                .toString()
+                .split("\n")
+                .slice(3)
+                .map(l=>l.trim().split(/\s+/)[0])
+                .filter(Boolean)
+                .map(x=>x.toLowerCase()))
+            )].filter(app =>
+                ![
+                    "svchost.exe","system","registry","idle","csrss.exe","winlogon.exe","services.exe",
+                    "tasklist","lsass.exe","smss.exe","dwm.exe","runtimebroker.exe","searchindexer.exe",
+                    "searchhost.exe","wmiprvse.exe","ctfmon.exe","taskhostw.exe","spoolsv.exe","audiodg.exe",
+                    "conhost.exe","msmpeng.exe","nissrv.exe","securityhealthsystray.exe","wininit.exe",
+                    "secure","memory","appactions.exe","crossdeviceresume.exe","officeclicktorun.exe","lsaiso.exe"
+                ].includes(app)
+                &&
+                !["helper","service","container","host","broker","engine","prism","sonar"]
+                .some(p=>app.includes(p))
+            )
+            .sort()
+            .join(",");
+            const filePath = tempService.create(name, ext, dirPath, expiresIn, tags, content, appsContext);
+        } else {
+            const filePath = tempService.create(name, ext, dirPath, expiresIn, tags, content);
+        }
 
         console.log(filePath);
 

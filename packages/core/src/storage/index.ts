@@ -6,3 +6,7 @@ export {
 export {
     TempRepository, TempRepository as Repository
 } from "./temp.repository";
+
+export {
+    EncryptionRepository
+} from "./encryption.repository"
