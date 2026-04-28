@@ -1,0 +1,24 @@
+{
+  "name": "imshu",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+"workspaces": [
+    "apps/*",
+    "packages/*",
+    "plugins/*"
+  ],
+  "scripts": {
+    "dev:cli": "bun run --filter @imshu/cli dev",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "commander": "^14.0.3"
+  }
+}
