@@ -1,12 +1,12 @@
 import { db } from "./db"
-import { EncryptionType, TempEncryptedData } from "../types/encryption"
+import { TempEncryptedData } from "../types/encryption"
 
 export class EncryptionRepository {
-    save(token: string, type: EncryptionType, data: string) {
+    save(token: string, data: string) {
         db.prepare(`
-            INSERT INTO temp_encrypted (token, type, data)
-            VALUES (?, ?, ?)
-        `).run(token, type, data);
+            INSERT INTO temp_encrypted (token, data)
+            VALUES (?, ?)
+        `).run(token, data);
     }
 
     get(token: string): TempEncryptedData | undefined {
@@ -19,11 +19,5 @@ export class EncryptionRepository {
         db.prepare(`
             DELETE FROM temp_encrypted WHERE token = ?
         `).run(token);
-    }
-
-    getByType(type: EncryptionType): TempEncryptedData[] {
-        return db.prepare(`
-            SELECT * FROM temp_encrypted WHERE type = ?
-        `).all(type) as TempEncryptedData[];
     }
 }

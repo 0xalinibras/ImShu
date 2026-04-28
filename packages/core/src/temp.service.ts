@@ -1,16 +1,12 @@
-import { EncryptionService } from "./encryption.service";
 import { tempEvents } from "./events";
-import { generateSmartName } from "./naming";
-import { saveFile, deleteFile, exists, Repository, EncryptionRepository } from "./storage";
+import { saveFile, deleteFile, exists, Repository } from "./storage";
 import { moveFile } from "./storage/fileSystem";
 import { TempFile } from "./types";
 import path from "path";
 
 export class TempService {
     constructor(
-        private tempRepository: Repository,
-        private encryptionRepo: EncryptionRepository,
-        private encryptionService: EncryptionService
+        private tempRepository: Repository
     ) {}
 
     create(name: TempFile["name"], ext: TempFile["ext"], dirPath: TempFile["dirPath"], expiresIn: number, tags?: TempFile["tags"], content?: string, appsContext?: string) {
@@ -21,26 +17,10 @@ export class TempService {
             if (!content) content = "";
             const status: TempFile["status"] = "temp";
 
-            //TODO: MAKE NAME STRTEGY
-            if(appsContext) {
-                const appsEnc = this.encryptionService.enctypt(appsContext);
-                const metaEnc = this.encryptionService.enctypt(
-                    JSON.stringify({id, name, ext, dirPath, createdAt, expiresAt, tags: tags || [], status})
-                )
-
-                this.encryptionRepo.save(appsEnc.token, "context", appsEnc.encrypted)
-                this.encryptionRepo.save(metaEnc.token, "metadata", metaEnc.encrypted)
-
-                name = generateSmartName(name, appsEnc.token, metaEnc.token);
-            } else {
-                name = `${name}_${Date.now()}`;
-            }
-
             const filePath = path.join(dirPath, `${name}.${ext}`);
             saveFile(filePath, content);
 
             this.tempRepository.create({id, name, ext, dirPath, createdAt, expiresAt, tags: tags || [], status});
-
             tempEvents.emit("temp:created");
 
             return filePath;

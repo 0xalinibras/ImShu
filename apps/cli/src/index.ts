@@ -1,8 +1,10 @@
 import { Command } from "commander";
 import { TempService, storage, TempScheduler } from "@imshu/core";
 import { exec, execSync, spawn } from "child_process";
-import { tempEvents } from "../../packages/core/src/events";
+import { tempEvents } from "../../../packages/core/src/events";
 import readline from "readline";
+import { EncryptionService } from "../../../packages/core/src/encryption.service";
+import { EncryptionRepository } from "../../../packages/core/src/storage";
 
 
 //TODO:
@@ -33,13 +35,12 @@ const config = {
     useSmartNameEncryption: false,
 }
 
+let encryptionService = config.useSmartNameEncryption ? new EncryptionService(new EncryptionRepository) : null;
 
 const tempService = new TempService(new storage.TempRepository());
 const scheduler = new TempScheduler(tempService, config.notifyBeforeMs);
 
 scheduler.start();
-
-
 
 const program = new Command();
 
@@ -66,7 +67,7 @@ program
         expiresIn = Number(expiresIn ?? config.defultExpiresIn);
         tags = tags ? tags.split(",") : [];
 
-        if(config.useSmartNameEncryption) {
+        if(encryptionService) {
             const appsContext  = [...new Set(
                 (execSync("tasklist")
                 .toString()
@@ -89,10 +90,11 @@ program
             )
             .sort()
             .join(",");
-            const filePath = tempService.create(name, ext, dirPath, expiresIn, tags, content, appsContext);
-        } else {
-            const filePath = tempService.create(name, ext, dirPath, expiresIn, tags, content);
+
+            name = encryptionService.generateSmartName(name, appsContext)
         }
+
+        const filePath = tempService.create(name, ext, dirPath, expiresIn, tags, content);
 
         console.log(filePath);
 
