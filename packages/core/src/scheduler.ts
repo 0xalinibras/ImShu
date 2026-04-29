@@ -13,6 +13,7 @@ export class TempScheduler {
     start() {
         this.scheduleNext();
 
+        //TODO: Read more about "events"
         tempEvents.on("temp:created", () => this.scheduleNext());
         tempEvents.on("temp:deleted", () => this.scheduleNext());
         tempEvents.on("temp:promoted", () => this.scheduleNext());

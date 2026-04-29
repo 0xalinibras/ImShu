@@ -5,13 +5,8 @@ import { tempEvents } from "../../../packages/core/src/events";
 import readline from "readline";
 import { EncryptionService } from "../../../packages/core/src/encryption.service";
 import { EncryptionRepository } from "../../../packages/core/src/storage";
+import { Clipboard } from "./clipboard";
 
-
-//TODO:
-
-/*
-temp config
-*/
 const config = {
     makeTempWithoutExt: true,
     defultExt: "txt",
@@ -32,15 +27,16 @@ const config = {
         py: "cmd",
     },
     defultSavedDirPath: "savedFiles",
-    useSmartNameEncryption: false,
+    useSmartNameEncryption: true,
 }
 
-let encryptionService = config.useSmartNameEncryption ? new EncryptionService(new EncryptionRepository) : null;
 
 const tempService = new TempService(new storage.TempRepository());
-const scheduler = new TempScheduler(tempService, config.notifyBeforeMs);
 
+const scheduler = new TempScheduler(tempService, config.notifyBeforeMs);
 scheduler.start();
+
+let encryptionService = config.useSmartNameEncryption ? new EncryptionService(new EncryptionRepository) : null;
 
 const program = new Command();
 
@@ -53,6 +49,7 @@ program
     .command("create")
     .description("Create a temporary file")
 
+    .option("-f", "--fromClipboard", "Create a temporary file from clipboard")
     .argument("[name]", "The name of the file")
     .argument(`${config.makeTempWithoutExt ? "[ext]" : "<ext>"}`, "The extension of the file")
     .argument("[dirPath]", "The directory path to save the file")
@@ -60,7 +57,18 @@ program
     .argument("[tags]", "The tags of the file, separated by comma")
     .argument("[content]", "The content of the file")
 
-    .action((name: string, ext: string, dirPath: string, expiresIn: number, tags, content: string) => {
+    .action(async (name: string, ext: string, dirPath: string, expiresIn: number, tags, content: string, options) => {
+
+        if(options.f) {
+            const clipboard = new Clipboard();
+            const text = await clipboard.read();
+            if (text == "") {
+                console.log("Clipboard is empty");
+                return;
+            }
+            content = text;
+        }
+
         name = name || "temp";
         ext = ext || config.defultExt;
         dirPath = dirPath || config.defultDirPath;
@@ -96,7 +104,7 @@ program
 
         const filePath = tempService.create(name, ext, dirPath, expiresIn, tags, content);
 
-        console.log(filePath);
+        // console.log(filePath);
 
         if (config.openAfterCreate) {
             const openIn = config.openIn[ext as keyof typeof config.openIn] || "notepad";
@@ -115,23 +123,23 @@ program
             }
         }
 
-        if (config.runAfterCreate) {
-            const em = config.executionMode[ext as keyof typeof config.executionMode];
+        // if (config.runAfterCreate) {
+        //     const em = config.executionMode[ext as keyof typeof config.executionMode];
 
-            if (em === "direct") {
-                const runCommand = generateRunCommand(ext, filePath);
-                console.log(`Executing command: ${runCommand}`);
-                exec(runCommand, (error) => {
-                    if (error) {
-                        console.error("Error executing command:", error);
-                    }
-                });
-            } else if (em === "cmd") {
-                const runCommand = generateRunCommand(ext, filePath);
-                console.log(`Executing command: ${runCommand}`);
-                exec(`start cmd.exe /k "${runCommand.replace(/"/g, '\\"')}"`);
-            }
-        }
+        //     if (em === "direct") {
+        //         const runCommand = generateRunCommand(ext, filePath);
+        //         console.log(`Executing command: ${runCommand}`);
+        //         exec(runCommand, (error) => {
+        //             if (error) {
+        //                 console.error("Error executing command:", error);
+        //             }
+        //         });
+        //     } else if (em === "cmd") {
+        //         const runCommand = generateRunCommand(ext, filePath);
+        //         console.log(`Executing command: ${runCommand}`);
+        //         exec(`start cmd.exe /k "${runCommand.replace(/"/g, '\\"')}"`);
+        //     }
+        // }
     });
 
 program
@@ -189,13 +197,13 @@ program
         console.log(`Permanent file with id ${id} demoted back to temp file at ${newDirPath}`);
     });
 
-tempEvents.on("temp:expiring_soon", (temp) => {
-    console.log(`Temp file "${temp.name}.${temp.ext}" is expiring soon!`);
-});
+// tempEvents.on("temp:expiring_soon", (temp) => {
+//     console.log(`Temp file "${temp.name}.${temp.ext}" is expiring soon!`);
+// });
 
-tempEvents.on("temp:expired", (temp) => {
-    console.log(`Temp file "${temp.name}.${temp.ext}" has expired and been deleted.`);
-});
+// tempEvents.on("temp:expired", (temp) => {
+//     console.log(`Temp file "${temp.name}.${temp.ext}" has expired and been deleted.`);
+// });
 
 function generateRunCommand(ext: string, filePath: string): string {
 
