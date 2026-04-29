@@ -5,7 +5,8 @@ import { tempEvents } from "../../../packages/core/src/events";
 import readline from "readline";
 import { EncryptionService } from "../../../packages/core/src/encryption.service";
 import { EncryptionRepository } from "../../../packages/core/src/storage";
-import { Clipboard } from "./clipboard";
+import { CLIClipboard } from "./clipboard";
+import { CLIExecutor } from "./executor";
 
 const config = {
     makeTempWithoutExt: true,
@@ -18,13 +19,14 @@ const config = {
         txt: "notepad",
         ts: "vscode",
         json: "vscode",
+        py: "vscode",
         md: "popout",
     },
     runAfterCreate: true,
     executionMode: {
-        ts: "direct",
-        js: "direct",
-        py: "cmd",
+        ts: "integrated",
+        js: "integrated",
+        py: "newTerminal",
     },
     defultSavedDirPath: "savedFiles",
     useSmartNameEncryption: true,
@@ -36,7 +38,8 @@ const tempService = new TempService(new storage.TempRepository());
 const scheduler = new TempScheduler(tempService, config.notifyBeforeMs);
 scheduler.start();
 
-let encryptionService = config.useSmartNameEncryption ? new EncryptionService(new EncryptionRepository) : null;
+const encryptionService = config.useSmartNameEncryption ? new EncryptionService(new EncryptionRepository) : null;
+const executor = new CLIExecutor(config);
 
 const program = new Command();
 
@@ -59,8 +62,8 @@ program
 
     .action(async (name: string, ext: string, dirPath: string, expiresIn: number, tags, content: string, options) => {
 
-        if(options.f) {
-            const clipboard = new Clipboard();
+        if(options.f === true) {
+            const clipboard = new CLIClipboard();
             const text = await clipboard.read();
             if (text == "") {
                 console.log("Clipboard is empty");
@@ -104,42 +107,13 @@ program
 
         const filePath = tempService.create(name, ext, dirPath, expiresIn, tags, content);
 
-        // console.log(filePath);
-
         if (config.openAfterCreate) {
-            const openIn = config.openIn[ext as keyof typeof config.openIn] || "notepad";
-            if (openIn === "vscode") {
-                exec(`code -n ${filePath}`, (error) => {
-                    if (error) {
-                        console.error("Error opening file in VSCode:", error);
-                    }
-                });
-            } else if (openIn === "notepad") {
-                exec(`notepad ${filePath}`, (error) => {
-                    if (error) {
-                        console.error("Error opening file in Notepad:", error);
-                    }
-                });
-            }
+            executor.open(filePath, ext);
         }
 
-        // if (config.runAfterCreate) {
-        //     const em = config.executionMode[ext as keyof typeof config.executionMode];
-
-        //     if (em === "direct") {
-        //         const runCommand = generateRunCommand(ext, filePath);
-        //         console.log(`Executing command: ${runCommand}`);
-        //         exec(runCommand, (error) => {
-        //             if (error) {
-        //                 console.error("Error executing command:", error);
-        //             }
-        //         });
-        //     } else if (em === "cmd") {
-        //         const runCommand = generateRunCommand(ext, filePath);
-        //         console.log(`Executing command: ${runCommand}`);
-        //         exec(`start cmd.exe /k "${runCommand.replace(/"/g, '\\"')}"`);
-        //     }
-        // }
+        if (config.runAfterCreate) {
+            executor.run(filePath, ext);
+        }
     });
 
 program
@@ -205,19 +179,6 @@ program
 //     console.log(`Temp file "${temp.name}.${temp.ext}" has expired and been deleted.`);
 // });
 
-function generateRunCommand(ext: string, filePath: string): string {
-
-    switch (ext) {
-        case "ts":
-            return `bun run ${filePath}`;
-        case "py":
-            return `python ${filePath}`;
-        case "js":
-            return `node ${filePath}`;
-        default:
-            return filePath;
-    }
-}
 
 
 // =====================================
