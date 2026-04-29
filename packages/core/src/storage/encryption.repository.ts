@@ -15,6 +15,12 @@ export class EncryptionRepository {
         `).get(token) as TempEncryptedData | undefined;
     }
 
+    exists(token: string): boolean {
+        return db.prepare(`
+            SELECT * FROM temp_encrypted WHERE token = ?
+        `).get(token) != null;
+    }
+
     delete(token: string) {
         db.prepare(`
             DELETE FROM temp_encrypted WHERE token = ?

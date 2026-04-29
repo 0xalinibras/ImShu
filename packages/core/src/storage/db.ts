@@ -26,7 +26,6 @@ CREATE TABLE IF NOT EXISTS temps (
 db.run(`
 CREATE TABLE IF NOT EXISTS temp_encrypted (
     token TEXT PRIMARY KEY,
-    type TEXT NOT NULL,
     data TEXT NOT NULL
 );
 `)

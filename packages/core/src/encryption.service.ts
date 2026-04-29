@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { EncryptionRepository } from "./storage";
 import { TempFile } from "./types";
+import { db } from "./storage/db";
 
 export class EncryptionService {
     constructor(
@@ -12,10 +13,11 @@ export class EncryptionService {
     generateSmartName(name: TempFile["name"], appsContext: string) {
 
         const appEnc = this.encrypt(JSON.stringify(appsContext))
+        const smartName = `${name}_${appEnc.token}`
 
-        const smartName = `${name}_${appEnc}`
-
-        this.encryptionRepo.save(appEnc.token, appEnc.encrypted)
+        if (!this.encryptionRepo.exists(appEnc.token)) {
+            this.encryptionRepo.save(appEnc.token, appEnc.encrypted)
+        }
 
         return smartName;
     }
